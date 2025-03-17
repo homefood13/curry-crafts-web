@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -157,14 +156,13 @@ const Contact = () => {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email">Email (Optional)</Label>
                       <Input 
                         id="email" 
                         type="email" 
                         placeholder="your@email.com" 
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        required 
                       />
                     </div>
                     <div>
