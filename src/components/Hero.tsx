@@ -21,7 +21,7 @@ const slides = [
     id: 3,
     image: 'https://images.unsplash.com/photo-1505253758473-96b7015fcd40?q=80&w=2000&auto=format&fit=crop',
     title: 'Discover Royal Indian Dining',
-    subtitle: 'An ambiance inspired by India's rich heritage'
+    subtitle: 'An ambiance inspired by India\'s rich heritage'
   }
 ];
 
