@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import Hero from '../components/Hero';
 import FeaturedDishes from '../components/FeaturedDishes';
@@ -179,7 +178,7 @@ const Index = () => {
               <Link to="/menu" className="btn-secondary bg-white border-white text-indian-brown hover:bg-transparent hover:text-white">
                 View Our Menu
               </Link>
-              <Link to="/contact" className="btn-primary bg-indian-red text-white">
+              <Link to="/private-dining" className="btn-primary bg-indian-red text-white">
                 Book a Table
               </Link>
             </div>
