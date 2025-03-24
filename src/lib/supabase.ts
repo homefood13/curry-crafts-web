@@ -1,19 +1,25 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Default values for development or when env vars are not available
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-url.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+// Check if environment variables are available
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+// Flag to check if Supabase is configured
+export const isSupabaseConfigured = 
+  !!supabaseUrl && 
+  !!supabaseAnonKey &&
+  supabaseUrl !== '' &&
+  supabaseAnonKey !== '' &&
+  !supabaseUrl.includes('placeholder');
 
 // Create the Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder-url.supabase.co',
+  supabaseAnonKey || 'placeholder-key'
+);
 
-// Flag to check if we're using real credentials
-export const isSupabaseConfigured = 
-  import.meta.env.VITE_SUPABASE_URL && 
-  import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Authentication helpers with error handling
+// Authentication helpers with improved error handling
 export const signIn = async (email: string, password: string) => {
   if (!isSupabaseConfigured) {
     console.warn('Supabase not configured. Authentication functions will not work.');
@@ -118,6 +124,85 @@ export const getMenuItems = async (category?: string) => {
   }
 };
 
+export const createMenuItem = async (menuItem: {
+  name: string;
+  description: string;
+  price: string;
+  category: string;
+  spicyLevel: string;
+  dietary: string;
+  image?: string;
+  popular?: boolean;
+}) => {
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Database functions will not work.');
+    return null;
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('menu_items')
+      .insert([menuItem])
+      .select();
+      
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error creating menu item:', error);
+    return null;
+  }
+};
+
+export const updateMenuItem = async (id: number, changes: Partial<{
+  name: string;
+  description: string;
+  price: string;
+  category: string;
+  spicyLevel: string;
+  dietary: string;
+  image: string;
+  popular: boolean;
+}>) => {
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Database functions will not work.');
+    return null;
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('menu_items')
+      .update(changes)
+      .eq('id', id)
+      .select();
+      
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error updating menu item:', error);
+    return null;
+  }
+};
+
+export const deleteMenuItem = async (id: number) => {
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Database functions will not work.');
+    return null;
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('menu_items')
+      .delete()
+      .eq('id', id);
+      
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error deleting menu item:', error);
+    return null;
+  }
+};
+
 export const uploadImage = async (file: File, path: string) => {
   if (!isSupabaseConfigured) {
     console.warn('Supabase not configured. Storage functions will not work.');
@@ -133,7 +218,13 @@ export const uploadImage = async (file: File, path: string) => {
       .upload(fileName, file);
       
     if (error) throw error;
-    return data;
+    
+    // Get the public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('gallery')
+      .getPublicUrl(fileName);
+      
+    return publicUrlData.publicUrl;
   } catch (error) {
     console.error('Error uploading image:', error);
     return null;
@@ -150,7 +241,22 @@ export const getGalleryImages = async () => {
     const { data, error } = await supabase.storage.from('gallery').list();
     
     if (error) throw error;
-    return data;
+    
+    // Get public URLs for all images
+    const imagesWithUrls = await Promise.all(
+      data.map(async (file) => {
+        const { data: urlData } = supabase.storage
+          .from('gallery')
+          .getPublicUrl(file.name);
+          
+        return {
+          ...file,
+          url: urlData.publicUrl
+        };
+      })
+    );
+    
+    return imagesWithUrls;
   } catch (error) {
     console.error('Error fetching gallery images:', error);
     return [];
@@ -179,5 +285,25 @@ export const submitContactForm = async (contact: {
   } catch (error) {
     console.error('Error submitting contact form:', error);
     return null;
+  }
+};
+
+export const getContactSubmissions = async () => {
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Database functions will not work.');
+    return [];
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('contact_submissions')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching contact submissions:', error);
+    return [];
   }
 };

@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { toast } from '@/hooks/use-toast';
 
 type AuthContextType = {
   session: Session | null;
@@ -46,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (isSupabaseConfigured) {
       const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('Auth state changed:', event, session);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -68,27 +70,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isSupabaseConfigured,
     signIn: async (email: string, password: string) => {
       if (!isSupabaseConfigured) {
+        toast({
+          title: "Supabase not configured",
+          description: "Please set your Supabase credentials in the environment variables.",
+          variant: "destructive",
+        });
         throw new Error('Supabase not configured. Please set environment variables.');
       }
       
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+      
+      toast({
+        title: "Login successful",
+        description: "You have been logged in successfully.",
+      });
     },
     signUp: async (email: string, password: string) => {
       if (!isSupabaseConfigured) {
+        toast({
+          title: "Supabase not configured",
+          description: "Please set your Supabase credentials in the environment variables.",
+          variant: "destructive",
+        });
         throw new Error('Supabase not configured. Please set environment variables.');
       }
       
       const { error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
+      if (error) {
+        toast({
+          title: "Sign up failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+      
+      toast({
+        title: "Sign up successful",
+        description: "Please check your email to confirm your account.",
+      });
     },
     signOut: async () => {
       if (!isSupabaseConfigured) {
+        toast({
+          title: "Supabase not configured",
+          description: "Please set your Supabase credentials in the environment variables.",
+          variant: "destructive",
+        });
         throw new Error('Supabase not configured. Please set environment variables.');
       }
       
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (error) {
+        toast({
+          title: "Sign out failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+      
+      toast({
+        title: "Sign out successful",
+        description: "You have been signed out successfully.",
+      });
     },
   };
 
