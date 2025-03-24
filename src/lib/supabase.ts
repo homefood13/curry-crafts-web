@@ -1,42 +1,71 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Default values for development or when env vars are not available
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-url.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase credentials. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.');
-}
-
+// Create the Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Authentication helpers
+// Flag to check if we're using real credentials
+export const isSupabaseConfigured = 
+  import.meta.env.VITE_SUPABASE_URL && 
+  import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Authentication helpers with error handling
 export const signIn = async (email: string, password: string) => {
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Authentication functions will not work.');
+    return { error: { message: 'Supabase not configured' } };
+  }
   return await supabase.auth.signInWithPassword({ email, password });
 };
 
 export const signUp = async (email: string, password: string) => {
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Authentication functions will not work.');
+    return { error: { message: 'Supabase not configured' } };
+  }
   return await supabase.auth.signUp({ email, password });
 };
 
 export const signOut = async () => {
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Authentication functions will not work.');
+    return { error: { message: 'Supabase not configured' } };
+  }
   return await supabase.auth.signOut();
 };
 
 export const getCurrentUser = async () => {
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Authentication functions will not work.');
+    return null;
+  }
   const { data } = await supabase.auth.getUser();
   return data.user;
 };
 
-// Database helpers for different collections
+// Database helpers for different collections with error handling
 export const getReservations = async () => {
-  const { data, error } = await supabase
-    .from('reservations')
-    .select('*')
-    .order('date', { ascending: true });
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Database functions will not work.');
+    return [];
+  }
   
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('*')
+      .order('date', { ascending: true });
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching reservations:', error);
+    return [];
+  }
 };
 
 export const createReservation = async (reservation: {
@@ -48,44 +77,84 @@ export const createReservation = async (reservation: {
   time: string;
   message?: string;
 }) => {
-  const { data, error } = await supabase
-    .from('reservations')
-    .insert([reservation])
-    .select();
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Database functions will not work.');
+    return null;
+  }
   
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('reservations')
+      .insert([reservation])
+      .select();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error creating reservation:', error);
+    return null;
+  }
 };
 
 export const getMenuItems = async (category?: string) => {
-  let query = supabase.from('menu_items').select('*');
-  
-  if (category) {
-    query = query.eq('category', category);
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Database functions will not work.');
+    return [];
   }
   
-  const { data, error } = await query.order('id');
-  if (error) throw error;
-  return data;
+  try {
+    let query = supabase.from('menu_items').select('*');
+    
+    if (category) {
+      query = query.eq('category', category);
+    }
+    
+    const { data, error } = await query.order('id');
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching menu items:', error);
+    return [];
+  }
 };
 
 export const uploadImage = async (file: File, path: string) => {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${path}/${Math.random()}.${fileExt}`;
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Storage functions will not work.');
+    return null;
+  }
   
-  const { data, error } = await supabase.storage
-    .from('gallery')
-    .upload(fileName, file);
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${path}/${Math.random()}.${fileExt}`;
     
-  if (error) throw error;
-  return data;
+    const { data, error } = await supabase.storage
+      .from('gallery')
+      .upload(fileName, file);
+      
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    return null;
+  }
 };
 
 export const getGalleryImages = async () => {
-  const { data, error } = await supabase.storage.from('gallery').list();
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Storage functions will not work.');
+    return [];
+  }
   
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase.storage.from('gallery').list();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching gallery images:', error);
+    return [];
+  }
 };
 
 export const submitContactForm = async (contact: {
@@ -94,11 +163,21 @@ export const submitContactForm = async (contact: {
   phone: string;
   message: string;
 }) => {
-  const { data, error } = await supabase
-    .from('contact_submissions')
-    .insert([contact])
-    .select();
+  if (!isSupabaseConfigured) {
+    console.warn('Supabase not configured. Database functions will not work.');
+    return null;
+  }
   
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('contact_submissions')
+      .insert([contact])
+      .select();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error submitting contact form:', error);
+    return null;
+  }
 };
