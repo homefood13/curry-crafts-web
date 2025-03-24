@@ -1,8 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Upload } from 'lucide-react';
 import ImageWithLoader from '@/components/ImageWithLoader';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase, uploadImage, getGalleryImages } from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 
 const Gallery = () => {
   useEffect(() => {
@@ -10,8 +13,7 @@ const Gallery = () => {
   }, []);
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
-  const galleryImages = [
+  const [galleryImages, setGalleryImages] = useState([
     {
       id: 1,
       src: "https://images.unsplash.com/photo-1585937421612-70a008356c36?q=80&w=2070&auto=format&fit=crop",
@@ -66,7 +68,53 @@ const Gallery = () => {
       alt: "Freshly prepared biryani",
       category: "Rice Dishes"
     }
-  ];
+  ]);
+  const { user } = useAuth();
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    const fetchImages = async () => {
+      try {
+        const storageImages = await getGalleryImages();
+        
+        // In a full implementation, we would map the Supabase storage files to our gallery format
+        // and merge with or replace the default images
+        console.log('Supabase storage images:', storageImages);
+        
+        // For now, we'll keep using the hardcoded array
+      } catch (error) {
+        console.error('Error fetching gallery images:', error);
+      }
+    };
+    
+    fetchImages();
+  }, []);
+  
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files.length) return;
+    
+    setIsUploading(true);
+    const file = e.target.files[0];
+    
+    try {
+      await uploadImage(file, 'gallery');
+      toast({
+        title: "Image Uploaded",
+        description: "Your image has been uploaded successfully.",
+      });
+      
+      // In a full implementation, we would refresh the gallery here
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: "Upload Failed",
+        description: "There was an error uploading your image.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen pt-24 pb-20">
@@ -97,6 +145,29 @@ const Gallery = () => {
           <p className="text-indian-brown/80 max-w-3xl mb-12">
             Immerse yourself in the visual feast of our authentic dishes, elegant restaurant spaces, and the art of Indian cuisine preparation. Each image tells a story of tradition, flavor, and passion.
           </p>
+
+          {/* Admin Upload Button - Only show to logged in users */}
+          {user && (
+            <div className="mb-8">
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2"
+                disabled={isUploading}
+              >
+                <Upload size={16} />
+                <label className="cursor-pointer">
+                  {isUploading ? 'Uploading...' : 'Upload New Image'}
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleImageUpload}
+                    disabled={isUploading}
+                  />
+                </label>
+              </Button>
+            </div>
+          )}
 
           {/* Image Grid */}
           <motion.div 
@@ -131,47 +202,47 @@ const Gallery = () => {
               </motion.div>
             ))}
           </motion.div>
+
+          {/* Lightbox */}
+          <AnimatePresence>
+            {selectedImage && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 md:p-8"
+                onClick={() => setSelectedImage(null)}
+              >
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ type: "spring", damping: 25 }}
+                  className="relative max-w-full max-h-full overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="relative">
+                    <img
+                      src={selectedImage}
+                      alt="Enlarged view"
+                      className="max-h-[85vh] max-w-full object-contain"
+                    />
+                    <button
+                      className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 rounded-full p-2 text-white backdrop-blur-sm transition-all duration-300"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedImage(null);
+                      }}
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </section>
-
-      {/* Lightbox */}
-      <AnimatePresence>
-        {selectedImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 md:p-8"
-            onClick={() => setSelectedImage(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ type: "spring", damping: 25 }}
-              className="relative max-w-full max-h-full overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="relative">
-                <img
-                  src={selectedImage}
-                  alt="Enlarged view"
-                  className="max-h-[85vh] max-w-full object-contain"
-                />
-                <button
-                  className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 rounded-full p-2 text-white backdrop-blur-sm transition-all duration-300"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImage(null);
-                  }}
-                >
-                  <X size={24} />
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

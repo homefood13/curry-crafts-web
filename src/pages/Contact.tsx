@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import ImageWithLoader from '@/components/ImageWithLoader';
+import { createReservation } from '@/lib/supabase';
 
 const Contact = () => {
   useEffect(() => {
@@ -24,23 +26,60 @@ const Contact = () => {
   const [message, setMessage] = useState('');
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState('19:00');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real application, this would send data to a server
-    toast({
-      title: "Reservation Request Received",
-      description: `Thank you, ${name}! We'll confirm your reservation shortly.`,
-    });
+    setIsSubmitting(true);
+    
+    try {
+      // Format date to string for storage
+      const formattedDate = date ? format(date, 'yyyy-MM-dd') : '';
+      
+      if (!formattedDate) {
+        toast({
+          title: "Date Required",
+          description: "Please select a date for your reservation.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Submit to Supabase
+      await createReservation({
+        name,
+        email,
+        phone,
+        guests,
+        date: formattedDate,
+        time,
+        message
+      });
+      
+      toast({
+        title: "Reservation Request Received",
+        description: `Thank you, ${name}! We'll confirm your reservation shortly.`,
+      });
 
-    // Reset form
-    setName('');
-    setEmail('');
-    setPhone('');
-    setGuests('2');
-    setMessage('');
-    setDate(undefined);
-    setTime('19:00');
+      // Reset form
+      setName('');
+      setEmail('');
+      setPhone('');
+      setGuests('2');
+      setMessage('');
+      setDate(undefined);
+      setTime('19:00');
+    } catch (error) {
+      console.error('Error submitting reservation:', error);
+      toast({
+        title: "Submission Failed",
+        description: "There was an error submitting your reservation. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const availableTimes = [
@@ -250,8 +289,12 @@ const Contact = () => {
                   </div>
                 </div>
                 
-                <Button type="submit" className="w-full bg-indian-red hover:bg-indian-red/90">
-                  Confirm Reservation
+                <Button 
+                  type="submit" 
+                  className="w-full bg-indian-red hover:bg-indian-red/90"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Processing...' : 'Confirm Reservation'}
                 </Button>
                 
                 <p className="text-xs text-center text-indian-brown/60">
